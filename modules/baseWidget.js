@@ -21,6 +21,7 @@ function baseWidget(aWindow) {
                           .getService(Ci.mozISocialRegistry);
   let service = registry.currentProvider;
   if (service) {
+    this.enable();
     this.setProvider(service);
   }
 }
@@ -30,11 +31,14 @@ baseWidget.prototype = {
     let registry = Cc["@mozilla.org/socialProviderRegistry;1"]
                             .getService(Ci.mozISocialRegistry);
     if (aTopic == 'social-service-changed') {
+      if (registry.currentProvider)
+        this.enable();
       this.setProvider(registry.currentProvider);
     }
     else if (aTopic == 'social-service-init-ready') {
       let service = registry.get(aData);
       if (service == registry.currentProvider) {
+        this.enable();
         this.setProvider(service);
       }
     }

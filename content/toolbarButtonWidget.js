@@ -31,6 +31,14 @@ SocialToolbarButton.prototype = {
   },
   remove: function() {
   },
+  enable: function() {
+    dump("SHOW the toolbarbutton now\n");
+    document.getElementById("social-button-container").removeAttribute('hidden');
+  },
+  disable: function() {
+    dump("HIDE the toolbarbutton now\n");
+    document.getElementById("social-button-container").setAttribute('hidden', true);
+  },
   onpopupshown: function(event) {
     let aWindow = event.target.ownerDocument.defaultView;
     var sbrowser = aWindow.document.getElementById("social-status-sidebar-browser");

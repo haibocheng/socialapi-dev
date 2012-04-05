@@ -92,7 +92,9 @@ ManifestRegistry.prototype = {
       manifest.contentPatchPath = undefined;
       manifest.enabled = true;
       ManifestDB.put(location, manifest);
-      providerRegistryService.register(manifest);
+      let registry = Cc["@mozilla.org/socialProviderRegistry;1"]
+                            .getService(Ci.mozISocialRegistry);
+      registry.register(manifest);
       // XXX notification of installation
     }
 
@@ -275,8 +277,8 @@ ProviderRegistry.prototype = {
           this.currentProvider = nextProvider;
         }
         else {
-          Services.obs.notifyObservers(null, "social-browsing-disabled", null);
           this.currentProvider = null;
+          Services.obs.notifyObservers(null, "social-browsing-disabled", null);
         }
       }
       provider.deactivate();
@@ -292,8 +294,10 @@ ProviderRegistry.prototype = {
       });
       provider.enabled = true;
       provider.activate();
-      if (!this.currentProvider)
+      if (!this._currentProvider) { // yes, check the private var
+        Services.obs.notifyObservers(null, "social-browsing-enabled", null);
         this.currentProvider = provider;
+      }
     }
     else if (aTopic == 'social-browsing-enabled') {
       for each(let provider in this._providers) {
@@ -319,49 +323,37 @@ ProviderRegistry.prototype = {
     try {
       let provider = new SocialProvider(manifest);
       this._providers[manifest.origin] = provider
+      // registration on startup needs to set currentProvider
+      try {
+        currentProviderOrigin = this._prefBranch.getCharPref("current");
+        if (!currentProviderOrigin || manifest.origin == currentProviderOrigin) {
+          this.currentProvider = provider;
+        }
+      }
+      catch(e) {}
     }
     catch(e) {
       Cu.reportError(e);
     }
   },
   get currentProvider() {
-    if (!this._currentProvider) {
-      let provider;
-      let currentProviderOrigin;
-      try {
-        currentProviderOrigin = this._prefBranch.getCharPref("current");
-        provider = this._providers[currentProviderOrigin];
-      }
-      catch(e) {}
-      if (!provider || !provider.enabled) {
-        // find one that is enabled
-        for each(let p in this._providers) {
-          if (p.enabled) {
-            provider = p;
-            break;
-          }
-        }
-      }
-      if (provider && provider.enabled) {
-        this._prefBranch.setCharPref("current", provider.origin);
-        this._currentProvider = provider;
-      }
-    }
+
     return this._currentProvider;
   },
   set currentProvider(provider) {
-    if (!provider.enabled) {
+    if (provider && !provider.enabled) {
       throw new Error("cannot set disabled provider as the current provider");
     }
+    let origin = provider ? provider.origin : "";
     this._currentProvider = provider;
     try {
-      this._prefBranch.setCharPref("current", provider.origin);
+      this._prefBranch.setCharPref("current", origin);
     }
     catch(e) {
       // just during dev, otherwise we shouldn't log here
-      //Cu.reportError(e);
+      Cu.reportError(e);
     }
-    Services.obs.notifyObservers(null, "social-service-changed", provider.origin);
+    Services.obs.notifyObservers(null, "social-service-changed", origin);
   },
   get: function pr_get(origin) {
     return this._providers[origin];

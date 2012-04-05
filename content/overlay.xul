@@ -50,6 +50,7 @@
     id="social-button-container"
     class= "chromeclass-toolbar-additional"
     removable="true"
+    hidden="true"
     title="&socialdev.label;">
     <toolbarbutton
       id="socialdev-button"
